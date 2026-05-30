@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🏥 MeriNurse — AI-Powered Healthcare Portal & Record Management
 
 MeriNurse is a state-of-the-art, full-stack patient-doctor web portal. It integrates advanced medical record storage, AI-driven report analysis, drug-allergy matching against a massive database of 253k+ Indian medicines, real-time FDA drug interaction checks, a highly personalized chatbot, and an integrated appointment scheduling workflow.
@@ -171,3 +172,7 @@ If you prefer to run the client and server in separate terminal windows:
 ---
 
 Built with ❤️ by Shubh._Saysss for better, safer patient care.
+=======
+# MeriNurse
+MeriNurse is an AI-Powered healthcare platform for securely storing, organizing and accessing medical records, prescriptions and health document, with intelligent document management features.
+>>>>>>> 750b6417f0862621846834222355ef9c95698bd3
