@@ -1,0 +1,455 @@
+/* ══════════════════════════════════════════
+   AUTH PAGE  –  MeriNurse Peach / Coral UI
+   ══════════════════════════════════════════ */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 40px 20px;
+  background: linear-gradient(145deg, #fdf0ea 0%, #f9e2d5 40%, #f5cfc0 100%);
+}
+
+/* ── Decorative spheres (matching landing page big sphere) ── */
+.auth-bg-shapes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+.auth-shape {
+  position: absolute;
+  border-radius: 50%;
+}
+
+/* large coral sphere – right side, like the landing page */
+.auth-shape-1 {
+  width: 520px;
+  height: 520px;
+  right: -120px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at 35% 35%, #f07a5a, #c84520 70%, #9a2a0a);
+  box-shadow: inset -20px -20px 60px rgba(0,0,0,0.2), 0 20px 80px rgba(180,60,20,0.3);
+  animation: sphereFloat 9s ease-in-out infinite;
+}
+
+/* small accent sphere – bottom left */
+.auth-shape-2 {
+  width: 220px;
+  height: 220px;
+  left: -60px;
+  bottom: -60px;
+  background: radial-gradient(circle at 35% 35%, #f5b8a0, #e07050 70%);
+  opacity: 0.6;
+  animation: sphereFloat 13s ease-in-out infinite reverse;
+}
+
+/* tiny top-left */
+.auth-shape-3 {
+  width: 120px;
+  height: 120px;
+  left: 15%;
+  top: 10%;
+  background: radial-gradient(circle at 40% 40%, #ffd5c5, #f09070);
+  opacity: 0.4;
+  animation: sphereFloat 11s ease-in-out infinite;
+}
+
+@keyframes sphereFloat {
+  0%, 100% { transform: translateY(-50%) scale(1); }
+  50%       { transform: translateY(calc(-50% - 18px)) scale(1.03); }
+}
+
+/* ── Layout ── */
+.auth-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  /* push card slightly left so big sphere shows on right */
+  padding-right: clamp(0px, 15vw, 260px);
+}
+
+/* ── Card ── */
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  padding: 44px 40px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 8px 40px rgba(160, 60, 20, 0.14),
+    0 2px 8px rgba(0,0,0,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+/* register card is a bit wider */
+.auth-card.auth-card--wide {
+  max-width: 540px;
+}
+
+/* ── Header ── */
+.auth-header { text-align: center; margin-bottom: 32px; }
+
+.auth-logo {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin: 0 auto 18px;
+  box-shadow: 0 6px 20px rgba(232, 99, 62, 0.4);
+}
+
+.auth-logo-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin: 0 auto 18px;
+}
+
+.auth-logo-badge {
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(232, 99, 62, 0.4);
+}
+
+.auth-brand-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.auth-brand-name span { color: var(--brand-500); }
+
+.auth-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.auth-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+/* ── Form ── */
+.auth-form { display: flex; flex-direction: column; }
+
+.auth-submit { width: 100%; margin-top: 8px; }
+
+/* ── Input with icon ── */
+.input-with-icon { position: relative; }
+
+.input-with-icon .input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+}
+.input-with-icon .form-input { padding-left: 44px; }
+
+.input-icon-right {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  padding: 4px;
+  transition: color var(--transition-fast);
+}
+.input-icon-right:hover { color: var(--brand-500); }
+
+/* ── Role Toggle ── */
+.role-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+  background: var(--peach-100);
+  border-radius: var(--radius-full);
+  padding: 5px;
+  border: 1px solid var(--border-subtle);
+}
+
+.role-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.role-btn-active {
+  background: white;
+  color: var(--brand-600);
+  box-shadow: 0 2px 8px rgba(232, 99, 62, 0.2);
+}
+
+/* ── Form Row (side by side) ── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ── Demo Credentials ── */
+.demo-credentials {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--border-default);
+  text-align: center;
+}
+
+.demo-credentials-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.demo-credentials-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.demo-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+}
+.demo-btn span { display: flex; flex-direction: column; line-height: 1.3; }
+.demo-btn strong { font-size: 0.8125rem; font-weight: 700; }
+.demo-btn small  { font-size: 0.6875rem; color: var(--text-muted); }
+.demo-btn:hover {
+  border-color: var(--brand-400);
+  background: var(--peach-50);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.demo-btn:active { transform: translateY(0); }
+
+/* ── Auth Footer ── */
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.auth-footer a {
+  font-weight: 700;
+  color: var(--brand-500);
+}
+.auth-footer a:hover { color: var(--brand-600); }
+
+/* ── Divider ── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-default);
+}
+
+/* ── Stat strip below card ── */
+.auth-stats {
+  display: flex;
+  gap: 32px;
+  margin-top: 28px;
+  justify-content: center;
+}
+.auth-stat-item { text-align: center; }
+.auth-stat-value { font-size: 1.25rem; font-weight: 800; color: var(--text-primary); }
+.auth-stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .auth-container { padding-right: 0; }
+  .auth-shape-1   { width: 300px; height: 300px; right: -80px; opacity: 0.7; }
+  .auth-card      { padding: 28px 20px; }
+  .form-row       { grid-template-columns: 1fr; gap: 0; }
+  .demo-credentials-buttons { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SPLIT LAYOUT  –  Form | 3-D Avatar
+   ══════════════════════════════════════════════════════════════ */
+
+/* Outer container replaces .auth-container for split-panel pages */
+.auth-split-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 40px;
+  align-items: center;
+  padding: 40px 24px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Register has a slightly wider form column */
+.auth-split-container--wide {
+  grid-template-columns: 1fr 400px;
+}
+
+/* ── Form side ── */
+.auth-form-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* ── Avatar side ── */
+.auth-avatar-side {
+  position: relative;
+  height: 580px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 12px 48px rgba(160, 60, 20, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Floating caption at bottom of avatar side */
+.auth-avatar-caption {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-radius: 999px;
+  padding: 6px 18px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+/* Loading fallback centred in avatar side */
+.auth-avatar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+/* ── Responsive: stack vertically on small screens ── */
+@media (max-width: 900px) {
+  .auth-split-container,
+  .auth-split-container--wide {
+    grid-template-columns: 1fr;
+    padding: 24px 16px;
+    gap: 24px;
+  }
+
+  .auth-avatar-side {
+    height: 340px;
+    order: -1; /* show avatar above form on mobile */
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PROFILE PAGE  –  Sticky avatar panel on the right
+   ══════════════════════════════════════════════════════════════ */
+
+.profile-avatar-panel {
+  flex: 0 0 300px;
+  position: sticky;
+  top: 80px; /* sit below the fixed navbar */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-avatar-inner {
+  height: 460px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 8px 32px rgba(160, 60, 20, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+/* Info card below the 3D canvas */
+.profile-avatar-hint {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  padding: 14px 18px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(160, 60, 20, 0.08);
+}
+
+/* Hide avatar panel on narrow screens */
+@media (max-width: 900px) {
+  .profile-avatar-panel { display: none; }
+}
+

@@ -1,0 +1,28 @@
+/* ── App Layout – MeriNurse warm theme ── */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+/* Medication item */
+.rx-med-item {
+  padding: 6px 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+.rx-med-item:last-child { border-bottom: none; }
