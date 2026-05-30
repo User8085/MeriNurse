@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Use relative path so Vite's proxy handles it — eliminates CORS completely.
 // In production set VITE_API_URL to your deployed API base.
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://merinurse.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE,
