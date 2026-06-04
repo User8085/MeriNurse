@@ -1,11 +1,9 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiHeart } from 'react-icons/fi';
+import VideoAvatarViewer from '../components/VideoAvatarViewer';
 import './Auth.css';
-
-// Lazy-load the heavy 3-D component so the rest of the auth page renders instantly
-const AvatarViewer = lazy(() => import('../components/AvatarViewer'));
 
 export default function Login() {
   const [email, setEmail]               = useState('');
@@ -123,16 +121,9 @@ export default function Login() {
           </div>
         </div>
 
-        {/* ── RIGHT: 3-D avatar panel ── */}
+        {/* ── RIGHT: Video avatar panel ── */}
         <div className="auth-avatar-side">
-          <Suspense fallback={
-            <div className="auth-avatar-loading">
-              <div className="spinner" style={{ width: 48, height: 48, borderTopColor: 'var(--brand-500)' }} />
-              <p>Loading avatar…</p>
-            </div>
-          }>
-            <AvatarViewer gender="male" style={{ height: '100%' }} />
-          </Suspense>
+          <VideoAvatarViewer style={{ height: '100%' }} />
 
           {/* Floating pill info */}
           <div className="auth-avatar-caption">

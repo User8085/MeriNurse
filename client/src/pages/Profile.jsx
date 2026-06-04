@@ -1,11 +1,8 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
 import { FiSave } from 'react-icons/fi';
 import './Auth.css';
-
-// Lazy-load the heavy 3-D viewer
-const AvatarViewer = lazy(() => import('../components/AvatarViewer'));
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
@@ -49,14 +46,9 @@ export default function Profile() {
     finally { setSaving(false); }
   };
 
-  const avatarGender = form.gender === 'female' ? 'female' : 'male';
-
   return (
-    /* Split layout: form on left, 3D avatar on right */
-    <div style={{ display: 'flex', gap: 32, alignItems: 'flex-start', minHeight: 'calc(100vh - 120px)' }}>
-
-      {/* ── Left: Profile form ── */}
-      <div style={{ flex: '1 1 0', minWidth: 0, padding: '28px 0' }}>
+    <div style={{ padding: '28px 0', maxWidth: 800, margin: '0 auto' }}>
+      <div>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 24 }}>Profile Settings</h2>
 
         {success && <div className="alert alert-success">Profile updated successfully!</div>}
@@ -158,35 +150,6 @@ export default function Profile() {
           </button>
         </form>
       </div>
-
-      {/* ── Right: Gender-reactive 3D avatar (sticky) ── */}
-      <div className="profile-avatar-panel">
-        <div className="profile-avatar-inner">
-          <Suspense fallback={
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', height: '100%', gap: 12, color: 'var(--text-muted)' }}>
-              <div className="spinner" style={{ width: 40, height: 40, borderTopColor: 'var(--brand-500)' }} />
-              <p style={{ fontSize: '0.875rem' }}>Loading 3D Avatar…</p>
-            </div>
-          }>
-            <AvatarViewer gender={avatarGender} style={{ height: '100%' }} />
-          </Suspense>
-        </div>
-
-        {/* Hint card */}
-        <div className="profile-avatar-hint">
-          <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>
-            {form.gender === 'female' ? '♀' : '♂'}
-          </div>
-          <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
-            {form.firstName || 'Your'} {form.lastName || 'Avatar'}
-          </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {form.gender || 'Gender not set'} · {form.bloodGroup || 'Blood group not set'}
-          </div>
-        </div>
-      </div>
-
     </div>
   );
 }

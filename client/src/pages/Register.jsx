@@ -1,16 +1,14 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FiMail, FiLock, FiUser, FiEye, FiEyeOff, FiPhone, FiHeart } from 'react-icons/fi';
+import VideoAvatarViewer from '../components/VideoAvatarViewer';
 import './Auth.css';
-
-// Lazy-load the heavy 3-D viewer
-const AvatarViewer = lazy(() => import('../components/AvatarViewer'));
 
 export default function Register() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: '',
-    role: 'patient', phone: '', gender: '',
+    role: 'patient', phone: '',
     specialization: '', licenseNumber: '', hospital: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -46,8 +44,6 @@ export default function Register() {
     }
   };
 
-  // Derive avatar gender: default to male for doctor or unknown
-  const avatarGender = form.gender === 'female' ? 'female' : 'male';
 
   return (
     <div className="auth-page">
@@ -119,25 +115,13 @@ export default function Register() {
                 </div>
               </div>
 
-              {/* Phone + Gender Row */}
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Phone (optional)</label>
-                  <div className="input-with-icon">
-                    <FiPhone className="input-icon" />
-                    <input name="phone" className="form-input" placeholder="+91 98765 43210"
-                      value={form.phone} onChange={handleChange} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Gender</label>
-                  <select name="gender" className="form-select" value={form.gender} onChange={handleChange} required>
-                    <option value="">Select gender</option>
-                    <option value="male">♂ Male</option>
-                    <option value="female">♀ Female</option>
-                    <option value="other">⚥ Other</option>
-                    <option value="prefer-not-to-say">Prefer not to say</option>
-                  </select>
+              {/* Phone */}
+              <div className="form-group">
+                <label className="form-label">Phone (optional)</label>
+                <div className="input-with-icon">
+                  <FiPhone className="input-icon" />
+                  <input name="phone" className="form-input" placeholder="+91 98765 43210"
+                    value={form.phone} onChange={handleChange} />
                 </div>
               </div>
 
@@ -199,22 +183,16 @@ export default function Register() {
           </div>
         </div>
 
-        {/* ── RIGHT: Gender-reactive 3D avatar ── */}
+        {/* ── RIGHT: Video avatar (role-aware) ── */}
         <div className="auth-avatar-side">
-          <Suspense fallback={
-            <div className="auth-avatar-loading">
-              <div className="spinner" style={{ width: 48, height: 48, borderTopColor: 'var(--brand-500)' }} />
-              <p>Loading avatar…</p>
-            </div>
-          }>
-            <AvatarViewer gender={avatarGender} style={{ height: '100%' }} />
-          </Suspense>
+          <VideoAvatarViewer
+            src={form.role === 'doctor' ? '/doctor-avatar.mp4' : '/patient-avatar.mp4'}
+            style={{ height: '100%' }}
+          />
 
-          {/* Live hint */}
+          {/* Floating pill info */}
           <div className="auth-avatar-caption">
-            {form.gender
-              ? <span>Showing your {form.gender === 'female' ? '♀ female' : '♂ male'} avatar</span>
-              : <span>👆 Select your gender to see your avatar</span>}
+            <span>{form.role === 'doctor' ? '🩺 Join as a Healthcare Professional' : '🏥 Your personal health companion'}</span>
           </div>
         </div>
       </div>
