@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { prescriptionsAPI, accessAPI, drugAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -72,6 +72,40 @@ export default function Prescriptions() {
   const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // ── Debounced drug-name autocomplete ──────────────────────────────────────
+  // We store the raw typed value and fire the API only after 300 ms of inactivity
+  const [pendingMedQuery, setPendingMedQuery] = useState({ index: null, value: '' });
+  const suggestTimerRef = useRef(null);
+
+  useEffect(() => {
+    const { index, value } = pendingMedQuery;
+    if (index === null) return;
+
+    // Clear any previously queued request
+    clearTimeout(suggestTimerRef.current);
+
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setActiveMedIndex(null);
+      return;
+    }
+
+    suggestTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await drugAPI.suggest(value);
+        if (res.data.success) {
+          setSuggestions(res.data.data || []);
+          setActiveMedIndex(index);
+        }
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+
+    // Cleanup timer if component unmounts or query changes
+    return () => clearTimeout(suggestTimerRef.current);
+  }, [pendingMedQuery]);
+
   useEffect(() => { fetchData(); }, []);
 
   // Load all patients for doctor
@@ -124,22 +158,11 @@ export default function Prescriptions() {
     setForm({ ...form, medications: form.medications.filter((_, i) => i !== index) });
   };
 
-  const handleMedNameChange = async (index, value) => {
+  const handleMedNameChange = (index, value) => {
+    // Update the displayed value immediately for a snappy feel
     updateMed(index, 'name', value);
-    if (value.trim().length >= 2) {
-      try {
-        const res = await drugAPI.suggest(value);
-        if (res.data.success) {
-          setSuggestions(res.data.data || []);
-          setActiveMedIndex(index);
-        }
-      } catch (err) {
-        setSuggestions([]);
-      }
-    } else {
-      setSuggestions([]);
-      setActiveMedIndex(null);
-    }
+    // Queue the debounced API call
+    setPendingMedQuery({ index, value });
   };
 
   const selectSuggestion = (index, value) => {

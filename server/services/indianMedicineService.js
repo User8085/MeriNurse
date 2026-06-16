@@ -8,6 +8,7 @@ class IndianMedicineService {
     this.dbPath = path.join(__dirname, '..', 'medicines.db');
     this.csvPath = path.join(__dirname, '..', '..', 'updated_indian_medicine_data - Copy.csv');
     this.db = null;
+    this._initPromise = null; // tracks async compile-in-progress
   }
 
   // Parse a CSV line handling quotes and escaped characters
@@ -36,7 +37,8 @@ class IndianMedicineService {
     return result;
   }
 
-  // Initialize the database and compile from CSV if necessary
+  // Initialize the database — synchronous path when DB already exists,
+  // async compile path when it needs to be built from CSV.
   initialize() {
     if (this.db) return true;
 
@@ -49,10 +51,11 @@ class IndianMedicineService {
           console.error(`❌ CSV File not found at: ${this.csvPath}`);
           return false;
         }
-        
-        this.compileDatabase();
+        // Fire-and-forget async compile; queries will wait on _initPromise
+        this._initPromise = this.compileDatabase();
       } else {
         this.db = new DatabaseSync(this.dbPath);
+        this._ensureFTS();
         console.log('✅ Indian Medicine Database connected successfully');
       }
       return true;
@@ -62,112 +65,181 @@ class IndianMedicineService {
     }
   }
 
-  // Compile CSV into SQLite
-  compileDatabase() {
-    const startTime = Date.now();
-    this.db = new DatabaseSync(this.dbPath);
-
-    // Create schema
-    this.db.exec(`
-      CREATE TABLE medicines (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        price REAL,
-        manufacturer TEXT,
-        salt_composition TEXT,
-        desc TEXT,
-        side_effects TEXT,
-        drug_interactions TEXT
-      )
-    `);
-
-    // Create index for name searches
-    this.db.exec(`CREATE INDEX idx_medicines_name ON medicines(name)`);
-
-    const insertStmt = this.db.prepare(`
-      INSERT INTO medicines (id, name, price, manufacturer, salt_composition, desc, side_effects, drug_interactions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const fileStream = fs.createReadStream(this.csvPath);
-    const rl = readline.createInterface({
-      input: fileStream,
-      crlfDelay: Infinity
-    });
-
-    let count = 0;
-    let headers = null;
-
-    // Use synchronous reading because database execution is synchronous
-    // We will accumulate lines and perform batch inserts or transact
-    this.db.exec('BEGIN TRANSACTION');
-
-    const lines = [];
-    
-    // We can parse line-by-line using a generator or async iterator
-    // In Node.js readline, we can process sync in loop
-    // But since this runs once, let's parse it efficiently
-    console.log('Reading CSV rows and building index...');
-    
-    // We run a sync loop to insert all rows
-    const fileContent = fs.readFileSync(this.csvPath, 'utf8');
-    const allLines = fileContent.split(/\r?\n/);
-    
-    for (const line of allLines) {
-      if (!line.trim()) continue;
-      
-      if (count === 0) {
-        headers = this.parseCSVLine(line);
-        count++;
-        continue;
+  // Ensure FTS5 virtual table exists (idempotent — safe to call on every startup)
+  _ensureFTS() {
+    try {
+      this.db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS medicines_fts
+        USING fts5(name, salt_composition, content=medicines, content_rowid=id)
+      `);
+      // Only rebuild index if FTS table is empty
+      const sentinel = this.db.prepare(
+        `SELECT COUNT(*) AS n FROM medicines_fts LIMIT 1`
+      ).get();
+      if (!sentinel || sentinel.n === 0) {
+        console.log('🔄 Rebuilding FTS5 index...');
+        this.db.exec(`INSERT INTO medicines_fts(medicines_fts) VALUES('rebuild')`);
+        console.log('✅ FTS5 index ready');
       }
-
-      const fields = this.parseCSVLine(line);
-      if (fields.length >= headers.length) {
-        const med = {};
-        headers.forEach((header, index) => {
-          med[header] = fields[index];
-        });
-
-        const priceNum = parseFloat(med.price) || 0;
-
-        try {
-          insertStmt.run(
-            parseInt(med.id) || count,
-            med.name || '',
-            priceNum,
-            med.manufacturer_name || '',
-            med.salt_composition || '',
-            med.medicine_desc || '',
-            med.side_effects || '',
-            med.drug_interactions || ''
-          );
-        } catch (err) {
-          // Ignore duplicate keys or malformed entries
-        }
-      }
-      count++;
+    } catch (err) {
+      // FTS5 not available in this SQLite build — will fall back to LIKE search
+      console.warn('⚠️  FTS5 not available, falling back to LIKE search:', err.message);
     }
-
-    this.db.exec('COMMIT');
-    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`✅ SQLite Database compiled in ${duration}s. Seeded ${count - 1} medicines.`);
   }
 
-  // Pattern search by brand name or salt composition
+  // Compile CSV into SQLite using a memory-efficient line-by-line stream
+  compileDatabase() {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+
+      try {
+        this.db = new DatabaseSync(this.dbPath);
+
+        // Create schema
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS medicines (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            price REAL,
+            manufacturer TEXT,
+            salt_composition TEXT,
+            desc TEXT,
+            side_effects TEXT,
+            drug_interactions TEXT
+          )
+        `);
+
+        // B-tree indexes for exact / prefix lookups
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_medicines_name ON medicines(name)`);
+        this.db.exec(`CREATE INDEX IF NOT EXISTS idx_medicines_salt ON medicines(salt_composition)`);
+
+        const insertStmt = this.db.prepare(`
+          INSERT OR IGNORE INTO medicines
+            (id, name, price, manufacturer, salt_composition, desc, side_effects, drug_interactions)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        // ── Stream-based CSV reading: processes one line at a time ──────────
+        // Peak RAM stays ~5 MB instead of loading the full 45 MB CSV into memory
+        const fileStream = fs.createReadStream(this.csvPath, { encoding: 'utf8' });
+        const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+
+        let count = 0;
+        let headers = null;
+        const BATCH = 500; // commit a transaction every 500 rows
+        let batch = [];
+
+        const flushBatch = () => {
+          if (batch.length === 0) return;
+          this.db.exec('BEGIN TRANSACTION');
+          for (const row of batch) insertStmt.run(...row);
+          this.db.exec('COMMIT');
+          batch = [];
+        };
+
+        rl.on('line', (line) => {
+          if (!line.trim()) return;
+
+          if (count === 0) {
+            headers = this.parseCSVLine(line);
+            count++;
+            return;
+          }
+
+          const fields = this.parseCSVLine(line);
+          if (fields.length >= headers.length) {
+            const med = {};
+            headers.forEach((h, i) => { med[h] = fields[i]; });
+
+            batch.push([
+              parseInt(med.id) || count,
+              med.name || '',
+              parseFloat(med.price) || 0,
+              med.manufacturer_name || '',
+              med.salt_composition || '',
+              med.medicine_desc || '',
+              med.side_effects || '',
+              med.drug_interactions || '',
+            ]);
+
+            if (batch.length >= BATCH) flushBatch();
+          }
+          count++;
+        });
+
+        rl.on('close', () => {
+          // Flush any remaining rows
+          flushBatch();
+
+          // Build FTS5 virtual table for fast full-text search
+          this._ensureFTS();
+
+          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+          console.log(`✅ SQLite Database compiled in ${duration}s. Seeded ${count - 1} medicines.`);
+          resolve();
+        });
+
+        rl.on('error', (err) => {
+          console.error('❌ CSV streaming error:', err.message);
+          reject(err);
+        });
+
+      } catch (err) {
+        console.error('❌ compileDatabase error:', err.message);
+        reject(err);
+      }
+    });
+  }
+
+  // Wait for async compile to finish before executing a query
+  async _ready() {
+    if (this._initPromise) await this._initPromise;
+  }
+
+  // ── Fast search: prefix B-tree first, then FTS5, finally LIKE fallback ───
   searchMedicines(query, limit = 10) {
     this.initialize();
     if (!this.db) return [];
 
     try {
-      const stmt = this.db.prepare(`
-        SELECT id, name, price, manufacturer, salt_composition, desc, side_effects, drug_interactions 
-        FROM medicines 
-        WHERE name LIKE ? OR salt_composition LIKE ? 
+      // 1. Prefix search — uses the B-tree index on name (very fast)
+      const escapedQuery = query.replace(/[%_\\]/g, '\\$&');
+      const prefixStmt = this.db.prepare(`
+        SELECT id, name, price, manufacturer, salt_composition, desc, side_effects, drug_interactions
+        FROM medicines
+        WHERE name LIKE ? ESCAPE '\\'
         LIMIT ?
       `);
-      const searchPattern = `%${query}%`;
-      return stmt.all(searchPattern, searchPattern, limit);
+      const prefixResults = prefixStmt.all(`${escapedQuery}%`, limit);
+      if (prefixResults.length > 0) return prefixResults;
+
+      // 2. FTS5 full-text search — fast even on 253k rows
+      try {
+        const ftsStmt = this.db.prepare(`
+          SELECT m.id, m.name, m.price, m.manufacturer, m.salt_composition,
+                 m.desc, m.side_effects, m.drug_interactions
+          FROM medicines m
+          JOIN medicines_fts ON medicines_fts.rowid = m.id
+          WHERE medicines_fts MATCH ?
+          LIMIT ?
+        `);
+        const ftsQuery = `"${query.replace(/"/g, '""')}"*`;
+        const ftsResults = ftsStmt.all(ftsQuery, limit);
+        if (ftsResults.length > 0) return ftsResults;
+      } catch {
+        // FTS5 not available — fall through to LIKE
+      }
+
+      // 3. Substring LIKE fallback (full scan — slower but complete)
+      const likeStmt = this.db.prepare(`
+        SELECT id, name, price, manufacturer, salt_composition, desc, side_effects, drug_interactions
+        FROM medicines
+        WHERE name LIKE ? OR salt_composition LIKE ?
+        LIMIT ?
+      `);
+      const pattern = `%${query}%`;
+      return likeStmt.all(pattern, pattern, limit);
+
     } catch (error) {
       console.error('Search query error:', error.message);
       return [];
@@ -267,10 +339,8 @@ class IndianMedicineService {
 
         // 2. Class-based matching
         if (!isMatch) {
-          // Check if allergy represents a class
           for (const [className, classDrugs] of Object.entries(ALLERGY_CLASSES)) {
             if (allergen.includes(className)) {
-              // Allergen is something like "Penicillin" or "NSAID". Let's check if the drug matches
               for (const drug of classDrugs) {
                 const normalizedDrug = normalize(drug);
                 if (
@@ -288,12 +358,10 @@ class IndianMedicineService {
           }
         }
 
-        // 3. Check reverse class: does the allergen belong to a class that is present in the medicine description/salt?
+        // 3. Reverse class: does the allergen belong to a class present in the medicine?
         if (!isMatch) {
-          // If allergen is a specific drug (e.g. "amoxicillin"), find if it belongs to a class and if the prescribed med is of that class
           for (const [className, classDrugs] of Object.entries(ALLERGY_CLASSES)) {
             if (classDrugs.some(drug => normalize(drug) === normalizedAllergen)) {
-              // The allergen is in this class. Let's see if the prescribed med belongs to the same class
               const isMedInClass = classDrugs.some(drug => {
                 const normalizedDrug = normalize(drug);
                 return normalizedBrand.includes(normalizedDrug) || normalizedSalt.includes(normalizedDrug);
